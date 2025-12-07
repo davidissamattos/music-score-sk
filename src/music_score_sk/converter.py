@@ -1,9 +1,7 @@
 """Helpers that wrap music21 conversion utilities."""
 
 from __future__ import annotations
-
 from pathlib import Path
-
 from music21 import converter as m21_converter
 
 
@@ -25,7 +23,7 @@ def _available_output_formats() -> tuple[str, ...]:
 
 
 def list_output_formats() -> list[str]:
-    """Expose the cached format list."""
+    """Expose the format list."""
     return list(_available_output_formats())
 
 
@@ -46,6 +44,7 @@ def convert_score(*, source: str, target_format: str, output: str) -> str:
     if output_path.parent and not output_path.parent.exists():
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    base_format, *subformats = normalized_format.split(".")
     score = m21_converter.parse(str(source_path))
-    written_path = score.write(normalized_format, fp=str(output_path))
+    written_path = score.write(base_format, fp=str(output_path), subformats=subformats)
     return f"Created {written_path} using format '{normalized_format}'."
