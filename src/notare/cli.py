@@ -1,4 +1,4 @@
-"""Command line interface for the music-score-sk package."""
+"""Command line interface for the notare package."""
 
 from __future__ import annotations
 
