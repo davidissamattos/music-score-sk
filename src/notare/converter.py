@@ -7,7 +7,7 @@ from typing import BinaryIO
 
 from music21 import converter as m21_converter
 
-from .utils import infer_format_from_path, load_score, write_score, _available_output_formats,list_output_formats
+from .utils import load_score, write_score, _available_output_formats,list_output_formats
 
 
 

@@ -10,12 +10,14 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
 authors = [
-  { name = "David Issa Mattos" }
+  { name = "David Issa Mattos", email="issamattos.david@gmail.com"}
 ]
 dependencies = [
   "fire>=0.6",
   "music21>=9.0",
 ]
+[project.urls]
+Homepage = "https://github.com/davidissamattos/notare"
 
 [project.scripts]
 notare = "notare.cli:main"

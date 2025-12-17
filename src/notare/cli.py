@@ -12,10 +12,12 @@ from .converter import convert_score
 from .metadata import metadata_summary
 from .metadata import set_metadata as set_metadata_cmd
 from .extract import extract_sections
+from .delete import delete_sections
 from .transpose import transpose_score
 from .analyze import analyze_score
 from .show import show_score
 from .play import play_score
+from .simplify import simplify_score
 from .utils import  list_output_formats, list_input_formats
 
 
@@ -242,6 +244,41 @@ class ScoreTool:
             part_numbers=part_number,
         )
 
+    def delete(
+        self,
+        *,
+        source: str | None = None,
+        output: str | None = None,
+        output_format: str | None = None,
+        measures: str | None = None,
+        part_name: str | None = None,
+        part_number: str | None = None,
+    ) -> str:
+        """Delete specific measures and/or parts from a score.
+
+        Args
+        - measures: Comma-separated indices and ranges to delete, e.g., `1,3,5-8`. Measure numbering
+            is normalized to start at 1 on import; pickup/anacrusis is treated as 1.
+        - part-name: Comma-separated part names/ids to delete
+        - part-number: Comma-separated part numbers (1-based) to delete
+
+        Behavior
+        - Metadata is preserved. After deletions, measures are renumbered to start at 1.
+
+        Examples
+        - `notare delete --source score.musicxml --measures 2-3 --output pruned.musicxml`
+        - `notare delete --source score.musicxml --part-name Oboe --output no_oboe.musicxml`
+        - `type score.musicxml | notare delete --measures 1,3 | notare show`
+        """
+        return delete_sections(
+            source=source,
+            output=output,
+            output_format=output_format,
+            measures=measures,
+            part_names=part_name,
+            part_numbers=part_number,
+        )
+
     def analyze(
         self,
         *,
@@ -388,6 +425,45 @@ class ScoreTool:
         """
         return play_score(
             source=source,
+        )
+
+    def simplify(
+        self,
+        *,
+        source: str | None = None,
+        output: str | None = None,
+        output_format: str | None = None,
+        ornament_removal: bool = False,
+        ornament_removal_duration: str | None = None,
+    ) -> str:
+        """Simplify a score by applying selected algorithms in appearance order.
+
+        Algorithms
+        - `--ornament-removal`: Enable removal of grace notes, turns/trills components,
+          and very short-duration neighbors using a heuristic. Optional parameter:
+          `--ornament-removal-duration` (e.g., "1/8") controls the maximum ornament
+          length as a fraction of the local beat.
+
+        IO
+        - Omit `--source` to read from stdin (pipe). Omit `--output` to stream to stdout.
+
+        Examples
+        - `notare simplify --source score.musicxml --ornament-removal --output simplified.musicxml`
+        - `type score.musicxml | notare simplify --ornament-removal --ornament-removal-duration "1/8"`
+        """
+        # Build ordered algorithm list (future: derive exact order from argv tokens)
+        algorithms: list[tuple[str, dict[str, str]]] = []
+        if ornament_removal:
+            params = {}
+            if ornament_removal_duration:
+                params["duration"] = ornament_removal_duration
+            algorithms.append(("ornament_removal", params))
+
+        return simplify_score(
+            source=source,
+            output=output,
+            output_format=output_format,
+            algorithms=algorithms,
         )
 
 

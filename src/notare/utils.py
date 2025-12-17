@@ -167,7 +167,8 @@ def write_score(
         explicit=target_format,
         fallback="musicxml",
     )
-    write_kwargs = {"makeNotation": False} if target_format in {"musicxml", "midi"} else None
+    # Enable music21's notation processing to avoid inexpressible durations on export
+    write_kwargs = {"makeNotation": True} if target_format in {"musicxml", "midi"} else None
 
     if output is None: 
         buffer = stdout_buffer or sys.stdout.buffer
@@ -225,3 +226,86 @@ def _write_to_buffer(
             buffer.flush()
     finally:
         tmp_path.unlink(missing_ok=True)
+
+
+# --- Shared selection helpers used by extract and delete ---
+
+def _parse_measure_spec(spec: str | None) -> list[tuple[int, int]]:
+    """Parse a comma-separated measure spec into list of (start, end) ranges.
+
+    Accepts tokens like `1`, `3-5`, and removes accidental wrappers like parentheses/brackets.
+    Normalizes each range to have start <= end.
+    """
+    if not spec:
+        return []
+    spec = spec.strip().strip("()[]")
+    ranges: list[tuple[int, int]] = []
+    for token in spec.split(","):
+        token = token.strip().strip("()[]")
+        if not token:
+            continue
+        if "-" in token:
+            start_str, end_str = token.split("-", 1)
+            start = int(start_str.strip())
+            end = int(end_str.strip())
+        else:
+            start = end = int(token.strip())
+        if start > end:
+            start, end = end, start
+        ranges.append((start, end))
+    return ranges
+
+
+def _parse_csv(value: str | None, *, lower: bool = False) -> list[str]:
+    """Split a comma-separated string into normalized tokens."""
+    if not value:
+        return []
+    tokens = [item.strip() for item in value.split(",") if item.strip()]
+    if lower:
+        tokens = [token.lower() for token in tokens]
+    return tokens
+
+
+def _select_parts(
+    score: m21_stream.Score,
+    *,
+    part_names: str | None,
+    part_numbers: str | None,
+) -> list[m21_stream.Stream]:
+    """Select parts by name/id or 1-based part numbers. Returns the matched parts.
+
+    When a score has no explicit parts, returns a list containing the score stream itself.
+    Raises ValueError if explicit selection doesn't match any available parts.
+    """
+    parts = list(score.parts)
+    if not parts:
+        return [score]
+
+    name_set = set(_parse_csv(part_names, lower=True))
+    number_set = set(int(value) for value in _parse_csv(part_numbers) if value.isdigit())
+
+    if not name_set and not number_set:
+        return parts
+
+    selected: list[m21_stream.Stream] = []
+    for idx, part in enumerate(parts, start=1):
+        match = False
+        if name_set:
+            part_name = (getattr(part, "partName", "") or "").lower()
+            part_id = (getattr(part, "id", "") or "").lower()
+            if part_name in name_set or part_id in name_set:
+                match = True
+        if number_set and idx in number_set:
+            match = True
+        if match:
+            selected.append(part)
+
+    if not selected:
+        available = ", ".join(
+            filter(
+                None,
+                [(getattr(p, "partName", None) or getattr(p, "id", None) or f"Part {i+1}") for i, p in enumerate(parts)],
+            )
+        )
+        raise ValueError(f"No parts matched the selection. Available parts: {available}")
+    return selected

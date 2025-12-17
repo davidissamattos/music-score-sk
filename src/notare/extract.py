@@ -8,7 +8,8 @@ from typing import BinaryIO, Iterable
 
 from music21 import stream as m21_stream
 
-from .utils import infer_format_from_path, load_score, write_score
+from .utils import load_score, write_score
+from .utils import _renumber_measures_starting_at_one, _parse_measure_spec, _select_parts
 
 
 def extract_sections(
@@ -55,6 +56,15 @@ def extract_sections(
     for part in parts_to_add:
         new_score.insert(len(new_score.parts), part)
 
+    # Renumber measures to start from 1 in the extracted score
+    _renumber_measures_starting_at_one(new_score)
+
+    # Normalize notation for export
+    try:
+        new_score.makeNotation()
+    except Exception:
+        pass
+
     message = write_score(
         new_score,
         target_format=output_format,
@@ -65,75 +75,7 @@ def extract_sections(
 
 
 
-def _parse_measure_spec(spec: str | None) -> list[tuple[int, int]]:
-    if not spec:
-        return []
-    # Normalize and remove accidental wrappers like parentheses/brackets from shells
-    spec = spec.strip().strip("()[]")
-    ranges: list[tuple[int, int]] = []
-    for token in spec.split(","):
-        token = token.strip().strip("()[]")
-        if not token:
-            continue
-        if "-" in token:
-            start_str, end_str = token.split("-", 1)
-            start = int(start_str.strip())
-            end = int(end_str.strip())
-        else:
-            start = end = int(token.strip())
-        if start > end:
-            start, end = end, start
-        ranges.append((start, end))
-    return ranges
-
-
-def _select_parts(
-    score: m21_stream.Score,
-    *,
-    part_names: str | None,
-    part_numbers: str | None,
-) -> list[m21_stream.Stream]:
-    parts = list(score.parts)
-    if not parts:
-        return [score]
-
-    name_set = _parse_csv(part_names, lower=True)
-    number_set = set(int(value) for value in _parse_csv(part_numbers) if value.isdigit())
-
-    if not name_set and not number_set:
-        return parts
-
-    selected: list[m21_stream.Stream] = []
-    for idx, part in enumerate(parts, start=1):
-        match = False
-        if name_set:
-            part_name = (part.partName or "").lower()
-            part_id = (part.id or "").lower()
-            if part_name in name_set or part_id in name_set:
-                match = True
-        if number_set and idx in number_set:
-            match = True
-        if match:
-            selected.append(part)
-
-    if not selected:
-        available = ", ".join(
-            filter(
-                None,
-                [(p.partName or p.id or f"Part {i+1}") for i, p in enumerate(parts)],
-            )
-        )
-        raise ValueError(f"No parts matched the selection. Available parts: {available}")
-    return selected
-
-
-def _parse_csv(value: str | None, *, lower: bool = False) -> list[str]:
-    if not value:
-        return []
-    tokens = [item.strip() for item in value.split(",") if item.strip()]
-    if lower:
-        tokens = [token.lower() for token in tokens]
-    return tokens
+    
 
 
 def _slice_part(part: m21_stream.Stream, ranges: Iterable[tuple[int, int]]) -> m21_stream.Part | None:

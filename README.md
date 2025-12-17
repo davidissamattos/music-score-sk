@@ -8,6 +8,7 @@ The CLI uses [Google's Python Fire](https://github.com/google/python-fire) for t
 
 ### Installation from source code
 
+Editable mode:
 ```bash
 pip install -e .
 ```
@@ -23,7 +24,6 @@ pip install notare
 ```bash
 python -m build .
 ```
-
 
 ## Tests
 ```bash
@@ -81,8 +81,8 @@ The recommended way is to use musicxml as input and output as it is the most sup
 
 **LIMITATIONS**
 
-* music21 does not have a ABC writer. So it does not export to ABC, but it can parse it
-* music21 does not have a Lilypond parser, but it supports it as an output format
+- music21 does not have a ABC writer. So it does not export to ABC, but it can parse it
+- music21 does not have a Lilypond parser, but it supports it as an output format
 
 ### Transpose module
 
@@ -165,9 +165,31 @@ notare extract --source score.musicxml --part-number 1 --measures 2-4 --output-f
 
 **NOTES**
 
-* During import we re-number all the measures to start from 1. So the first measure is 1
-* If your score has other measures number system it will be overwritten 
-* If 0 is passed in measures, it returns the whole score
+- During import we re-number all the measures to start from 1. So the first measure is 1
+- If your score has other measures number system it will be overwritten 
+- If 0 is passed in measures, it returns the whole score
+
+### Delete module
+
+Remove specific measures and/or parts from a score. After deletions, measures are renumbered to start at 1 and metadata is preserved.
+
+```bash
+# Delete measures 2-3 across all parts and write the result
+notare delete --source score.musicxml --measures 2-3 --output pruned.musicxml
+
+# Delete a part by name
+notare delete --source score.musicxml --part-name Oboe --output no_oboe.musicxml
+
+# Combine deletions and use piping
+type tests\data\BrahWiMeSample.musicxml | notare delete --measures 1,3 | notare show
+```
+
+**Notes**
+
+- Measure numbering is normalized on import and renumbered after deletions so the final score starts at 1 and counts consecutively.
+- Part selection accepts names/ids via `--part-name` and 1-based indices via `--part-number`.
+- If you delete all measures, the score will show with a single empty measure
+- If you delete all parts, the score will show a single (new) part with a single empty measure
 
 ### Analyze module
 
@@ -244,4 +266,31 @@ type tests\data\BrahWiMeSample.musicxml | notare play
 Notes:
 - Uses music21 to render a temporary `.mid` and opens it with the OS default app.
 - Ensure a MIDI-capable player is installed/associated on your system.
+
+### Simplify module
+
+Apply one or more simplification algorithms to reduce ornamental complexity while preserving the musical gist.
+
+```bash
+# Remove common ornaments and short neighbors using a heuristic
+notare simplify --source score.musicxml --ornament-removal --output simplified.musicxml
+
+# Control the maximum ornament duration threshold relative to the local beat
+notare simplify --source score.musicxml --ornament-removal --ornament-removal-duration "1/8" --output simplified.musicxml
+
+# Works with pipes (omit --source to read stdin; omit --output to stream stdout)
+type tests\data\BrahWiMeSample.musicxml | notare simplify --ornament-removal > simplified.musicxml
+```
+
+Algorithms
+- `--ornament-removal`: Simplifies grace notes, turns, trills components, and very short-duration neighbors.
+
+Heuristic (all conditions must hold):
+- Duration < X beats (default X = `1/8` of the local beat)
+- Stepwise between two longer notes (both neighbors exist and are longer)
+- Occurs on a weak beat (music21 `beatStrength` < 0.5)
+
+Duration parameter
+- `--ornament-removal-duration "A/B"` sets the threshold as a fraction of the local beat (e.g., `1/8`, `1/4`).
+- Beat duration is derived from the current time signature (e.g., quarter in 4/4, dotted quarter in 6/8).
 
