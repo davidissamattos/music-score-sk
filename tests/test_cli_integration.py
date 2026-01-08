@@ -6,8 +6,22 @@ import sys
 import shutil
 from pathlib import Path
 import re
+import pytest
 
-OUTPUT_MUSICXML_MODULES = ["extract", "insert", "delete", "simplify", "convert", "transpose", "set-metadata", "set-part-metadata"]
+OUTPUT_MUSICXML_MODULES = [
+    "extract",
+    "insert",
+    "delete",
+    "simplify",
+    "convert",
+    "transpose",
+    "set-metadata",
+    "set-part-metadata",
+    "delete-lyrics",
+    "delete-annotations",
+    "delete-fingering",
+    "delete-chords",
+]
 OUTPUT_TEXT_MODULES = ["analyze", "metadata"]
 OUTPUT_GUI_MODULES = ["show", "play"]
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +33,8 @@ PIPELINE_POSIX: list[str] = [
     'cat tests/data/MozartPianoSonata.musicxml | notare set-metadata --composer "J. Doe" | notare metadata --composer',
     'cat tests/data/c_scale.abc | notare convert --format musicxml',
     'cat tests/data/MozartPianoSonata.musicxml | notare simplify --ornament-removal',
+    'cat tests/data/sozinho.musicxml | notare delete-lyrics',
+    'cat tests/data/sozinho.musicxml | notare delete-chords',
 ]
 
 def _resolve_notare_invocation(shell: str) -> str:
@@ -80,30 +96,30 @@ def _detect_last_command(pipeline: str) -> str:
     return verbs[-1] if verbs else ""
 
 
-def test_user_defined_posix_pipelines_run_and_validate():
+@pytest.mark.parametrize("pipeline", PIPELINE_POSIX)
+def test_user_defined_posix_pipeline_runs_and_validates(pipeline: str):
     os_kind = platform.system().lower()
     shells = ["posix"] if os_kind != "windows" else ["cmd", "powershell"]
-    for pipeline in PIPELINE_POSIX:
-        last = _detect_last_command(pipeline)
-        for shell in shells:
-            cmd_or_argv = _adapt_posix_pipeline_to_shell(pipeline, shell)
-            if shell == "powershell":
-                cp = subprocess.run(cmd_or_argv, capture_output=True, check=True, cwd=str(REPO_ROOT))
-            else:
-                cp = subprocess.run(cmd_or_argv, shell=True, capture_output=True, check=True, cwd=str(REPO_ROOT))
-            stdout = cp.stdout.decode(errors="replace")
-            if last in OUTPUT_TEXT_MODULES:
-                assert stdout.strip() != ""
-            elif last in OUTPUT_MUSICXML_MODULES:
-                # Expect MusicXML root element on stdout
-                assert "<score-partwise" in stdout
-            elif last in OUTPUT_GUI_MODULES:
-                if last == "show":
-                    # Expect HTML root element for 'show'
-                    assert "<!DOCTYPE html>" in stdout or "<html" in stdout
-                if last == "play":
-                    # Expect indication of opened MIDI file
-                    assert re.search(r"Opened MIDI player:\s+.*\.mid", stdout)
-            else:
-                # Expect MusicXML on stdout for other verbs
-                raise AssertionError(f"Unhandled last command '{last}' in pipeline.")
+    last = _detect_last_command(pipeline)
+    for shell in shells:
+        cmd_or_argv = _adapt_posix_pipeline_to_shell(pipeline, shell)
+        if shell == "powershell":
+            cp = subprocess.run(cmd_or_argv, capture_output=True, check=True, cwd=str(REPO_ROOT))
+        else:
+            cp = subprocess.run(cmd_or_argv, shell=True, capture_output=True, check=True, cwd=str(REPO_ROOT))
+        stdout = cp.stdout.decode(errors="replace")
+        if last in OUTPUT_TEXT_MODULES:
+            assert stdout.strip() != ""
+        elif last in OUTPUT_MUSICXML_MODULES:
+            # Expect MusicXML root element on stdout
+            assert "<score-partwise" in stdout
+        elif last in OUTPUT_GUI_MODULES:
+            if last == "show":
+                # Expect HTML root element for 'show'
+                assert "<!DOCTYPE html>" in stdout or "<html" in stdout
+            if last == "play":
+                # Expect indication of opened MIDI file
+                assert re.search(r"Opened MIDI player:\s+.*\.mid", stdout)
+        else:
+            # Expect MusicXML on stdout for other verbs
+            raise AssertionError(f"Unhandled last command '{last}' in pipeline.")

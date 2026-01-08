@@ -13,7 +13,7 @@ from .metadata import metadata_summary
 from .metadata import set_metadata as set_metadata_cmd
 from .metadata import set_part_metadata as set_part_metadata_cmd
 from .extract import extract_sections
-from .delete import delete_sections
+from .delete import delete_sections, delete_lyrics as delete_lyrics_cmd, delete_annotations as delete_annotations_cmd, delete_fingering as delete_fingering_cmd, delete_chords as delete_chords_cmd
 from .transpose import transpose_score
 from .analyze import analyze_score
 from .show import show_score
@@ -273,6 +273,86 @@ class ScoreTool:
         - `type score.musicxml | notare delete --measures 1,3 | notare show`
         """
         return delete_sections(
+            source=source,
+            output=output,
+            output_format=output_format,
+            measures=measures,
+            part_names=part_name,
+            part_numbers=part_number,
+        )
+
+    def delete_lyrics(
+        self,
+        *,
+        source: str | None = None,
+        output: str | None = None,
+        output_format: str | None = None,
+        measures: str | None = None,
+        part_name: str | None = None,
+        part_number: str | None = None,
+    ) -> str:
+        """Delete lyrics from the score. Scope with --measures/--part-name/--part-number or omit to delete all."""
+        return delete_lyrics_cmd(
+            source=source,
+            output=output,
+            output_format=output_format,
+            measures=measures,
+            part_names=part_name,
+            part_numbers=part_number,
+        )
+
+    def delete_annotations(
+        self,
+        *,
+        source: str | None = None,
+        output: str | None = None,
+        output_format: str | None = None,
+        measures: str | None = None,
+        part_name: str | None = None,
+        part_number: str | None = None,
+    ) -> str:
+        """Delete text annotations (expressions) from the score. Scope with --measures/--part-name/--part-number or omit to delete all."""
+        return delete_annotations_cmd(
+            source=source,
+            output=output,
+            output_format=output_format,
+            measures=measures,
+            part_names=part_name,
+            part_numbers=part_number,
+        )
+
+    def delete_fingering(
+        self,
+        *,
+        source: str | None = None,
+        output: str | None = None,
+        output_format: str | None = None,
+        measures: str | None = None,
+        part_name: str | None = None,
+        part_number: str | None = None,
+    ) -> str:
+        """Delete fingering marks. Scope with --measures/--part-name/--part-number or omit to delete all."""
+        return delete_fingering_cmd(
+            source=source,
+            output=output,
+            output_format=output_format,
+            measures=measures,
+            part_names=part_name,
+            part_numbers=part_number,
+        )
+
+    def delete_chords(
+        self,
+        *,
+        source: str | None = None,
+        output: str | None = None,
+        output_format: str | None = None,
+        measures: str | None = None,
+        part_name: str | None = None,
+        part_number: str | None = None,
+    ) -> str:
+        """Delete chord symbols (harmony). Scope with --measures/--part-name/--part-number or omit to delete all."""
+        return delete_chords_cmd(
             source=source,
             output=output,
             output_format=output_format,

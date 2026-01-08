@@ -1,4 +1,4 @@
-"""Utilities for deleting measures and parts from scores.
+"""Utilities for deleting measures, parts, and selected notational elements from scores.
 
 This module mirrors the `extract` module's interface but performs deletions:
 - Remove selected measures across parts
@@ -13,12 +13,16 @@ Behavior
 from __future__ import annotations
 
 import copy
-from typing import BinaryIO, Iterable
+from typing import BinaryIO, Iterable, List, Tuple
 
 from music21 import stream as m21_stream
 from music21 import meter as m21_meter
 from music21 import key as m21_key
 from music21 import clef as m21_clef
+from music21 import note as m21_note
+from music21 import expressions as m21_expr
+from music21 import articulations as m21_art
+from music21 import harmony as m21_harmony
 
 from .utils import load_score, write_score, _renumber_measures_starting_at_one
 from .utils import _parse_measure_spec, _select_parts
@@ -247,3 +251,202 @@ def _insert_starting_attributes(
             first_measure.insert(0, copy.deepcopy(last_ts))
         except Exception:
             pass
+
+
+# --- Element deletion helpers and public APIs ---
+
+def _number_in_ranges(num: int, ranges: List[Tuple[int, int]] | None) -> bool:
+    if not ranges:
+        return True
+    for start, end in ranges:
+        if start <= num <= end:
+            return True
+    return False
+
+
+def _selected_parts(score: m21_stream.Score, part_names: str | None, part_numbers: str | None) -> List[m21_stream.Stream]:
+    try:
+        parts = _select_parts(score, part_names=part_names, part_numbers=part_numbers)
+    except ValueError:
+        parts = []
+    return parts if parts else (list(score.parts) or [score])
+
+
+
+def delete_lyrics(
+    *,
+    source: str | None = None,
+    output: str | None = None,
+    output_format: str | None = None,
+    measures: str | None = None,
+    part_names: str | None = None,
+    part_numbers: str | None = None,
+    stdin_data: bytes | None = None,
+    stdout_buffer: BinaryIO | None = None,
+) -> str:
+    """Delete lyrics from notes, optionally scoped by measures and parts.
+
+    If no scope is provided, deletes lyrics from the entire score.
+    """
+    score = load_score(source, stdin_data=stdin_data)
+    ranges = _parse_measure_spec(measures)
+    parts = _selected_parts(score, part_names, part_numbers)
+
+    for part in parts:
+        for n in list(part.recurse().notes):
+            if not isinstance(n, m21_note.Note):
+                continue
+            meas = n.getContextByClass(m21_stream.Measure)
+            try:
+                num = int(getattr(meas, "number", 0) or 0) if meas is not None else 0
+            except Exception:
+                num = 0
+            if _number_in_ranges(num, ranges):
+                try:
+                    # Clear both single and multi-lyric representations
+                    if hasattr(n, "lyric"):
+                        n.lyric = None
+                except Exception:
+                    pass
+                try:
+                    lyr_list = list(getattr(n, "lyrics", []) or [])
+                    for lyr in lyr_list:
+                        try:
+                            site = lyr.activeSite if hasattr(lyr, "activeSite") else n
+                            if site is not None:
+                                site.remove(lyr)
+                        except Exception:
+                            pass
+                    try:
+                        n.lyrics = []  # type: ignore[attr-defined]
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+
+    return write_score(score, target_format=output_format, output=output, stdout_buffer=stdout_buffer)
+
+
+def delete_annotations(
+    *,
+    source: str | None = None,
+    output: str | None = None,
+    output_format: str | None = None,
+    measures: str | None = None,
+    part_names: str | None = None,
+    part_numbers: str | None = None,
+    stdin_data: bytes | None = None,
+    stdout_buffer: BinaryIO | None = None,
+) -> str:
+    """Delete text annotations (TextExpression/RehearsalMark) within the selected scope.
+
+    Notes
+    - Does not touch lyrics (use delete_lyrics) or chord symbols (use delete_chords).
+    """
+    score = load_score(source, stdin_data=stdin_data)
+    ranges = _parse_measure_spec(measures)
+    parts = _selected_parts(score, part_names, part_numbers)
+
+    classes = (m21_expr.TextExpression, m21_expr.RehearsalMark, m21_expr.Expression)
+    for part in parts:
+        for obj in list(part.recurse().getElementsByClass(classes)):
+            meas = obj.getContextByClass(m21_stream.Measure)
+            try:
+                num = int(getattr(meas, "number", 0) or 0) if meas is not None else 0
+            except Exception:
+                num = 0
+            if _number_in_ranges(num, ranges):
+                try:
+                    site = obj.activeSite
+                    if site is not None:
+                        site.remove(obj)
+                except Exception:
+                    pass
+
+    return write_score(score, target_format=output_format, output=output, stdout_buffer=stdout_buffer)
+
+
+def delete_fingering(
+    *,
+    source: str | None = None,
+    output: str | None = None,
+    output_format: str | None = None,
+    measures: str | None = None,
+    part_names: str | None = None,
+    part_numbers: str | None = None,
+    stdin_data: bytes | None = None,
+    stdout_buffer: BinaryIO | None = None,
+) -> str:
+    """Delete fingering markings from notes within the selected scope."""
+    score = load_score(source, stdin_data=stdin_data)
+    ranges = _parse_measure_spec(measures)
+    parts = _selected_parts(score, part_names, part_numbers)
+
+    for part in parts:
+        for n in list(part.recurse().notes):
+            if not isinstance(n, m21_note.Note):
+                continue
+            meas = n.getContextByClass(m21_stream.Measure)
+            try:
+                num = int(getattr(meas, "number", 0) or 0) if meas is not None else 0
+            except Exception:
+                num = 0
+            if not _number_in_ranges(num, ranges):
+                continue
+            try:
+                arts = list(getattr(n, "articulations", []) or [])
+                keep = []
+                for a in arts:
+                    if isinstance(a, m21_art.Fingering):
+                        try:
+                            site = a.activeSite
+                            if site is not None:
+                                site.remove(a)
+                        except Exception:
+                            pass
+                    else:
+                        keep.append(a)
+                try:
+                    n.articulations = keep  # type: ignore[attr-defined]
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
+    return write_score(score, target_format=output_format, output=output, stdout_buffer=stdout_buffer)
+
+
+def delete_chords(
+    *,
+    source: str | None = None,
+    output: str | None = None,
+    output_format: str | None = None,
+    measures: str | None = None,
+    part_names: str | None = None,
+    part_numbers: str | None = None,
+    stdin_data: bytes | None = None,
+    stdout_buffer: BinaryIO | None = None,
+) -> str:
+    """Delete chord symbols (harmony) within the selected scope."""
+    score = load_score(source, stdin_data=stdin_data)
+    ranges = _parse_measure_spec(measures)
+    parts = _selected_parts(score, part_names, part_numbers)
+
+    # MusicXML <harmony> may map to ChordSymbol or Harmony; remove both
+    classes = (m21_harmony.ChordSymbol, m21_harmony.Harmony)
+    for part in parts:
+        for obj in list(part.recurse().getElementsByClass(classes)):
+            meas = obj.getContextByClass(m21_stream.Measure)
+            try:
+                num = int(getattr(meas, "number", 0) or 0) if meas is not None else 0
+            except Exception:
+                num = 0
+            if _number_in_ranges(num, ranges):
+                try:
+                    site = obj.activeSite
+                    if site is not None:
+                        site.remove(obj)
+                except Exception:
+                    pass
+
+    return write_score(score, target_format=output_format, output=output, stdout_buffer=stdout_buffer)
