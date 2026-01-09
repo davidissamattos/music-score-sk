@@ -21,7 +21,7 @@ from .play import play_score
 from .simplify import simplify_score
 from .insert import add_sections
 from .utils import  list_output_formats, list_input_formats
-from .irealpro import score_to_irealpro_url
+from .irealpro import score_to_irealpro_url, score_to_irealpro_html_link, score_to_irealpro_raw_url
 
 
 class ScoreTool:
@@ -629,6 +629,8 @@ class ScoreTool:
         *,
         source: str | None = None,
         style: str | None = None,
+        html: bool = False,
+        url: bool = False,
     ) -> str:
         """Generate an HTML-safe iReal Pro URL from the score and print it.
 
@@ -640,8 +642,14 @@ class ScoreTool:
         - `notare irealpro --source score.musicxml`
         - `type score.musicxml | notare irealpro`
         """
-        url = score_to_irealpro_url(source=source, style=style)
-        print(url)
+        if html:
+            print(score_to_irealpro_html_link(source=source, style=style))
+        elif url:
+            # --url prints HTML-safe (percent-encoded) custom URL
+            print(score_to_irealpro_url(source=source, style=style))
+        else:
+            # Default prints raw (not percent-encoded) custom URL
+            print(score_to_irealpro_raw_url(source=source, style=style))
         return ""
 
 

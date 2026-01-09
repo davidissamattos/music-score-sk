@@ -370,18 +370,26 @@ Behavior
 
 ### iReal Pro module
 
-Generate an HTML-safe iReal Pro custom chord chart URL from a score.
+Generate an iReal Pro custom chord chart URL from a score.
 
 ```bash
-# From a file with optional style
+# From a file with optional style (prints raw URL by default)
 notare irealpro --source score.musicxml --style "Medium Swing"
 
 # Via pipe (Windows cmd)
 type tests\data\c_scale_chords.musicxml | notare irealpro
+
+# Generate an HTML anchor instead of a bare URL
+notare irealpro --source score.musicxml --style "Medium Swing" --html
+
+# Output an HTML-safe (percent-encoded) custom URL
+notare irealpro --source score.musicxml --style "Medium Swing" --url
 ```
 
 Behavior
-- Prints a percent-encoded URL beginning with `irealbook://...` suitable for embedding in HTML.
+- Prints a raw custom URL beginning with `irealbook://...` (not percent-encoded).
+- With `--html`, prints `<a href="...">Title</a>` using a percent-encoded URL and escaped title.
+- With `--url`, prints an HTML-safe percent-encoded custom URL for embedding in HTML.
 - Aborts if no chords are found (checks parts and stacked-note chords).
 - Uses first part containing chords when multiple parts exist.
 - Title normalization: leading "The " becomes ", The" for sorting.
