@@ -451,25 +451,8 @@ def _build_progression(part: m21_stream.Stream) -> str:
     added_forward_repeat = False
     added_backward_repeat = False
 
-    # If no explicit ending texts were found but a backward repeat exists,
-    # synthesize sequential ending markers (N1, N2, ...) for following measures
-    synthetic_endings: dict[int, str] = {}
-    if not ending_indices and backward_repeat_index >= 0:
-        n = 1
-        j = backward_repeat_index + 1
-        while j < len(measures):
-            synthetic_endings[j] = f"N{n}"
-            n += 1
-            # Stop when encountering a strong final barline on the right
-            try:
-                rb = getattr(measures[j], "rightBarline", None)
-                if rb is not None:
-                    rbt = str(getattr(rb, "type", "")).lower()
-                    if "final" in rbt:
-                        break
-            except Exception:
-                pass
-            j += 1
+    # Do not synthesize endings automatically. Only emit ending tokens
+    # when explicitly detected via measure text (e.g., '1.', '2.').
 
     for idx, meas in enumerate(measures):
         # time signature change
@@ -483,8 +466,6 @@ def _build_progression(part: m21_stream.Stream) -> str:
         if reh:
             lines.append(reh)
         ending_tok = _ending_token(meas)
-        if not ending_tok and synthetic_endings.get(idx):
-            ending_tok = synthetic_endings[idx]
         if ending_tok:
             lines.append(ending_tok)
 
