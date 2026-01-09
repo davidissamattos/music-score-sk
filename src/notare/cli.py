@@ -21,6 +21,7 @@ from .play import play_score
 from .simplify import simplify_score
 from .insert import add_sections
 from .utils import  list_output_formats, list_input_formats
+from .irealpro import score_to_irealpro_url
 
 
 class ScoreTool:
@@ -622,6 +623,26 @@ class ScoreTool:
             output=output,
             output_format=output_format,
         )
+
+    def irealpro(
+        self,
+        *,
+        source: str | None = None,
+        style: str | None = None,
+    ) -> str:
+        """Generate an HTML-safe iReal Pro URL from the score and print it.
+
+        Behavior
+        - Aborts if no chords are found in the score.
+        - Uses the first part containing chords when multiple parts exist.
+
+        Examples
+        - `notare irealpro --source score.musicxml`
+        - `type score.musicxml | notare irealpro`
+        """
+        url = score_to_irealpro_url(source=source, style=style)
+        print(url)
+        return ""
 
 
 def main(argv: Sequence[str] | None = None) -> None:

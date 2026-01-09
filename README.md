@@ -207,6 +207,31 @@ type tests\data\BrahWiMeSample.musicxml | notare delete --measures 1,3 | notare 
 - If you delete all measures, the score will show with a single empty measure
 - If you delete all parts, the score will show a single (new) part with a single empty measure
 
+#### Delete elements (lyrics, annotations, fingering, chords)
+
+Beyond removing measures/parts, you can also strip specific notational elements while preserving the music:
+
+```bash
+# Remove all lyrics
+notare delete-lyrics --source score.musicxml --output no_lyrics.musicxml
+
+# Remove chord symbols (harmony blocks)
+notare delete-chords --source score.musicxml --output no_chords.musicxml
+
+# Remove note fingerings
+notare delete-fingering --source score.musicxml --output no_fingering.musicxml
+
+# Remove text annotations (TextExpression / Rehearsal marks)
+notare delete-annotations --source score.musicxml --output no_annotations.musicxml
+
+# Scope by measures or parts (works for all delete-*)
+notare delete-lyrics --source score.musicxml --measures 1-8 --part-name Flute --output flute_verse_no_lyrics.musicxml
+```
+
+Notes
+- Scoping flags: `--measures`, `--part-name`, `--part-number`. If omitted, the entire score is affected.
+- Input from stdin and output to stdout are supported for pipelines (omit `--source` and/or `--output`).
+
 ### Analyze module
 
 
@@ -342,3 +367,29 @@ Behavior
 - Unmatched original parts: insert rest measures to keep alignment.
 - Unmatched `--to-add` parts: new parts are created with the given content; before/after regions are filled with rests to match other parts.
 - Measure numbering is renumbered to start at 1 after insertion.
+
+### iReal Pro module
+
+Generate an HTML-safe iReal Pro custom chord chart URL from a score.
+
+```bash
+# From a file with optional style
+notare irealpro --source score.musicxml --style "Medium Swing"
+
+# Via pipe (Windows cmd)
+type tests\data\c_scale_chords.musicxml | notare irealpro
+```
+
+Behavior
+- Prints a percent-encoded URL beginning with `irealbook://...` suitable for embedding in HTML.
+- Aborts if no chords are found (checks parts and stacked-note chords).
+- Uses first part containing chords when multiple parts exist.
+- Title normalization: leading "The " becomes ", The" for sorting.
+- Composer format: `LastName FirstName` per protocol.
+- Key token inferred from the score (e.g., `C`, `Eb-`).
+
+Example HTML embedding:
+
+```html
+<a href="irealbook://Song%20Title%3DLastname%20Firstname%3DMedium%20Swing%3DC%3Dn%3DT44%7CC%20%7CG%20%7CZ">Song Title</a>
+```

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE score-partwise PUBLIC
+  "-//Recordare//DTD MusicXML 3.1 Partwise//EN"
+  "http://www.musicxml.org/dtds/partwise.dtd">
+<score-partwise version="3.1">
+  <work>
+    <work-title>With Coda</work-title>
+  </work>
+  <identification>
+    <creator type="composer">Coda Writer</creator>
+  </identification>
+  <part-list>
+    <score-part id="P1"><part-name>Lead</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>1</divisions>
+        <key><fifths>0</fifths></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+        <clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      <direction placement="above"><coda/></direction>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration></note>
+    </measure>
+    <measure number="2">
+      <harmony>
+        <root><root-step>F</root-step></root>
+        <kind text="maj7" value="major-seventh"/>
+      </harmony>
+      <note><pitch><step>F</step><octave>4</octave></pitch><duration>4</duration></note>
+    </measure>
+    <measure number="3">
+      <harmony>
+        <root><root-step>G</root-step></root>
+        <kind text="7" value="dominant"/>
+      </harmony>
+      <note><pitch><step>G</step><octave>4</octave></pitch><duration>4</duration></note>
+      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+    </measure>
+  </part>
+</score-partwise>
